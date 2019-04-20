@@ -1,9 +1,8 @@
 import os
 
-# DATASET_PATH = '/Users/charles/charles/university/Master Project/go-ethereum/analysis_tool_python/SmartPonziDetection/dataset/'
 DATASET_PATH = '../dataset/'
-FOLDERS = ['ponzi_bcode/', 'non_ponzi_bcode/']
-
+# FOLDERS = ['ponzi_bcode/', 'non_ponzi_bcode/']
+FOLDERS = ['ponzi_new_bcode/']
 
 def start():
     [convert_all_file(folder) for folder in FOLDERS]

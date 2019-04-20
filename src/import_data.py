@@ -36,7 +36,8 @@ import os
 PATH = '../dataset/'
 DB = PATH + 'sm_database/{}/'
 NON_PONZI_OPCODE_PATH = '../dataset/non_ponzi/opcode/'
-PONZI_OPCODE_PATH = '../dataset/ponzi/opcode/'
+# PONZI_OPCODE_PATH = '../dataset/ponzi/opcode/'
+PONZI_OPCODE_PATH = '../dataset/ponzi/new_opcode/'
 
 class EthCrawlerNormalTx:
     def __init__(self, addresses, saved_file, revert_dict):
@@ -69,6 +70,10 @@ class EthCrawlerNormalTx:
         txs = []
         while True:
             url = self.url_nml_pattern.format(addr, page)
+
+            print('url: ', url)
+            print('addr: ', addr)
+
             print(f"{addr}, page={page}, progress:{round(self.count / self.addr_len * 100, 2)}%, num_txs={len(txs)}")
             data_one_page = self.crawl_one_page(url)
             if not data_one_page:
@@ -131,9 +136,6 @@ class EthCrawlerInternalTx:
                 txs += data_one_page
                 page += 1
         print(f"len of txs: {len(txs)}")
-        # with open(self.saved_file + addr + '.json', 'w') as f:
-        #     f.write(addr + "\n")
-        #     f.write(json.dumps(txs) + '\n')
         save_file(self.saved_file + addr, txs)
 
     @staticmethod
@@ -176,23 +178,27 @@ if __name__ == '__main__':
     # Check if NP contracts have "REVERT" in OPCODE. Ignore contracts contain "REVERT" during downloads.
     revert = {}
     # for filename in os.listdir(NON_PONZI_OPCODE_PATH):
-    for filename in os.listdir(NON_PONZI_OPCODE_PATH):
+    for filename in os.listdir(PONZI_OPCODE_PATH):
         if not filename.endswith('json'):
             continue
         # with open(NON_PONZI_OPCODE_PATH + filename) as f:
-        with open(NON_PONZI_OPCODE_PATH + filename) as f:
+        with open(PONZI_OPCODE_PATH + filename) as f:
             revert[filename.split('.json')[0]] = 'REVERT' in f.read()
 
     # crawling
-    files = ['ponzi_collection.csv', 'non_ponzi_collection.csv']
+    # files = ['ponzi_collection.csv', 'non_ponzi_collection.csv']
     # files = ['non_ponzi_collection.csv']
     # files = ['ponzi_collection.csv']
+    files = ['ponzi_supplement_2019_Apr_9.csv']
     for pz_file in files:
         with open(PATH + pz_file, 'rt') as f:
             csv_data = list(csv.reader(f))
+            # print(csv_data)
         addr_index = 2 if pz_file.startswith('ponzi') else 0
+        # print('addr index: ', addr_index)
         addresses = [line[addr_index].split(',')[0].split(' ')[0] for line in csv_data[1:]]
-        # saved_file = DB.format('normal' if pz_file.startswith('ponzi') else 'normal_np')
-        # EthCrawlerNormalTx(addresses, saved_file, revert).start()
+        # print('address: ', addresses)
+        saved_file = DB.format('normal' if pz_file.startswith('ponzi') else 'normal_np')
+        EthCrawlerNormalTx(addresses, saved_file, revert).start()
         saved_file = DB.format('internal' if pz_file.startswith('ponzi') else 'internal_np')
         EthCrawlerInternalTx(addresses, saved_file, revert).start()

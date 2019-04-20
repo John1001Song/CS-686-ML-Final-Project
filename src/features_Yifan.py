@@ -29,8 +29,40 @@ import json
 import time
 from sklearn import preprocessing
 import matplotlib.pyplot as plt
-from src.open_data import OPCODES # need original back
 
+OPCODES = ['STOP', 'ADD', 'MUL', 'SUB', 'DIV', 'SDIV', 'MOD', 'SMOD', 'ADDMOD', 'MULMOD', 'EXP', 'SIGNEXTEND',
+
+             'SUICIDE', 'DELEGATE_CALL', 'CREATE2',
+
+             'LT', 'GT', 'SLT', 'SGT', 'EQ', 'ISZERO', 'AND', 'OR', 'XOR', 'NOT', 'BYTE', 'SHA3', 'ADDRESS', 'BALANCE',
+             'ORIGIN', 'CALLER', 'CALLVALUE', 'CALLDATALOAD', 'CALLDATASIZE', 'CALLDATACOPY', 'CODESIZE', 'CODECOPY',
+             'GASPRICE', 'EXTCODESIZE', 'EXTCODECOPY',
+
+             'RETURNDATASIZE', 'RETURNDATACOPY',
+
+             'BLOCKHASH', 'COINBASE', 'TIMESTAMP', 'NUMBER', 'DIFFICULTY', 'GASLIMIT', 'POP', 'MLOAD', 'MSTORE',
+             'MSTORE8', 'SLOAD', 'SSTORE', 'JUMP', 'JUMPI', 'PC', 'MSIZE', 'GAS', 'JUMPDEST',
+             'PUSH1', 'PUSH2', 'PUSH3', 'PUSH4', 'PUSH5', 'PUSH6', 'PUSH7', 'PUSH8', 'PUSH9', 'PUSH10', 'PUSH11',
+             'PUSH12', 'PUSH13', 'PUSH14', 'PUSH15', 'PUSH16', 'PUSH17', 'PUSH18', 'PUSH19', 'PUSH20', 'PUSH21',
+             'PUSH22', 'PUSH23', 'PUSH24', 'PUSH25', 'PUSH26', 'PUSH27', 'PUSH28', 'PUSH29','PUSH30', 'PUSH31', 'PUSH32',
+             'DUP1', 'DUP2', 'DUP3', 'DUP4', 'DUP5', 'DUP6', 'DUP7', 'DUP8', 'DUP9',
+             'DUP10', 'DUP11', 'DUP12', 'DUP13', 'DUP14', 'DUP15', 'DUP16',
+             'SWAP1', 'SWAP2', 'SWAP3', 'SWAP4', 'SWAP5', 'SWAP6', 'SWAP7', 'SWAP8', 'SWAP9', 'SWAP10', 'SWAP11',
+             'SWAP12', 'SWAP13', 'SWAP14', 'SWAP15', 'SWAP16',
+             'LOG0', 'LOG1', 'LOG2', 'LOG3', 'LOG4',
+
+             'PUSH', 'DUP', 'SWAP',
+
+             'CREATE', 'CALL', 'CALLCODE', 'RETURN', 'DELEGATECALL', 'STATICCALL', 'REVERT', 'SELFDESTRUCT',
+
+            '29', '0d', 'ec', 'd9', 'a9', '46', 'b3', '2a', 'd2', 'c9', '22', '21', '1c', 'ea', 'c7', 'ee', 'd5', 'e5',
+            'ad', 'ac', '25', 'ca', 'be', 'e8', 'aa', 'b1', '1e', '49', 'e6', 'eb', 'a7', 'cf', '2e', '0c', '5d', 'ef',
+            'c8', '24', 'fe', 'e3', '4d', '2d', '3f', 'c0', 'd1', '23', 'b6', 'd7', 'cd', 'e1', 'e4', 'd6', 'af', 'f8',
+            'e0', 'e9', 'da', 'b2', '4e', '1d', 'cb', 'dc', 'df', 'c6', 'fb', 'b9', 'f9', 'd4', '28', 'b4', 'c5', 'f7',
+            '3e', 'a8', 'a6', '2f', 'b7', '47', 'fc', 'bf', '5c', '2c', '1b', '3d', 'c4', 'ce', '4b', 'bb', 'd8', 'bc',
+            '4c', 'f6', 'bd', 'db', '2b', '26', '48', '4f', 'c3', 'de', 'd3', 'e2', '4a', 'ab', 'd0', 'b5', 'dd', '0f',
+            '5e', 'c1', 'ed', '27', 'a5', 'b8', 'c2', 'e7', '0e', '5f', 'b0', 'ae', '1f', 'ba'
+            ]
 
 class Feature:
     def __init__(self):
@@ -49,11 +81,12 @@ class Feature:
         self.df = None
         self.df_opcodes = None
         self.df_basic = None
-        self.revert = dict()
+        # self.revert = dict()
 
     def start(self):
         self.define_path()
-        self.load_if_revert()
+        self.load_opcode_list()
+        # self.load_if_revert()
         self.load_op()
         # self.load_tr_dico()
         self.load_txs_data()
@@ -61,7 +94,7 @@ class Feature:
         self.df = self.create_pandas_dataframe(self.ft, self.ft_names + self.opcodes)
         self.df_opcodes = self.create_pandas_dataframe(self.ft_opcodes, ['ponzi'] + self.opcodes)
         self.df_basic = self.create_pandas_dataframe(self.ft_basic, self.ft_names)
-        # self.dump_arff()
+        self.dump_arff()
 
     def define_path(self):
         print("Feature: define variable and load data")
@@ -69,14 +102,12 @@ class Feature:
 
         self.paths['database_nml'] = self.paths['db'] + 'sm_database/normal/'
         self.paths['database_int'] = self.paths['db'] + 'sm_database/internal/'
-        self.paths['database_op'] = self.paths['db'] + 'ponzi/op_count/'
+        self.paths['database_op'] = self.paths['db'] + 'ponzi/official_op_count/'
 
         self.paths['database_nml_np'] = self.paths['db'] + 'sm_database/normal_np/'
         self.paths['database_int_np'] = self.paths['db'] + 'sm_database/internal_np/'
-        self.paths['database_op_np'] = self.paths['db'] + 'non_ponzi/op_count/'
+        self.paths['database_op_np'] = self.paths['db'] + 'non_ponzi/official_op_count/'
 
-        # self.paths['opcode'] = self.paths['db'] + 'ponzi/opcode/'
-        # self.paths['opcode_np'] = self.paths['db'] + 'non_ponzi/opcode/'
         self.paths['opcode'] = self.paths['db'] + 'ponzi_official_opcode/'
         self.paths['opcode_np'] = self.paths['db'] + 'non_ponzi_official_opcode/'
 
@@ -87,56 +118,64 @@ class Feature:
 
         self.cur_time = tl.compute_time(self.cur_time)
 
-    def load_if_revert(self):
-        revert = {}
-        for directory in ['opcode', 'opcode_np']:
-            for filename in os.listdir(self.paths[directory]):
-                if not filename.endswith('.json'):
-                    continue
-                with open(self.paths[directory] + filename) as f:
+    def load_opcode_list(self):
+        df = pd.read_csv(self.paths['db'] + 'opcode_list.csv')
+        df = df[df.Mnemonic != 'Invalid'].Mnemonic
+        # self.opcodes = df.tolist()
+        self.opcodes = OPCODES
+        print(self.opcodes)
 
-                    # print('-----------------')
-                    # print('file name: ', filename)
-                    # print('-----------------')
 
-                    revert[filename.split('.json')[0]] = 'REVERT' in f.read()
-        self.revert = revert
+    # def load_if_revert(self):
+    #     revert = {}
+    #     for directory in ['opcode', 'opcode_np']:
+    #         for filename in os.listdir(self.paths[directory]):
+    #             if not filename.endswith('.json'):
+    #                 continue
+    #             with open(self.paths[directory] + filename) as f:
+    #
+    #                 # print('-----------------')
+    #                 # print('file name: ', filename)
+    #                 # print('-----------------')
+    #
+    #                 revert[filename.split('.json')[0]] = 'REVERT' in f.read()
+    #     self.revert = revert
 
     def load_op(self):
         # op[p=0, np=1][index] = contract_address
         print("Loading op, opcodes, op_freq, size_info...")
         self.op = [
+            # sorted([fname.split('.csv')[0] for fname in os.listdir(self.paths['database_op']) if
+            #         fname.endswith('.csv') and not self.revert[fname.split('.csv')[0]]]),
+            # sorted([fname.split('.csv')[0] for fname in os.listdir(self.paths['database_op_np']) if
+            #         fname.endswith('.csv') and not self.revert[fname.split('.csv')[0]]])
             sorted([fname.split('.csv')[0] for fname in os.listdir(self.paths['database_op']) if
-                    fname.endswith('.csv') and not self.revert[fname.split('.csv')[0]]]),
+                    fname.endswith('.csv')]),
             sorted([fname.split('.csv')[0] for fname in os.listdir(self.paths['database_op_np']) if
-                    fname.endswith('.csv') and not self.revert[fname.split('.csv')[0]]])
+                    fname.endswith('.csv')])
         ]
         self.opcodes = OPCODES
         for i in self.op[0]:
             self.size_info.append(os.path.getsize(self.paths['db'] + 'ponzi/bcode/' + i + '.json'))
         for i in self.op[1]:
             self.size_info.append(os.path.getsize(self.paths['db'] + 'non_ponzi/bcode/' + i + '.json'))
-        # with open(self.paths['db'] + 'op_freq.json', 'rb', ) as f:
-        #     self.op_freq = json.loads(f.read())
+        with open(self.paths['db'] + 'op_freq_list.json', 'rb', ) as f:
+            self.op_freq = json.loads(f.read())
         self.load_op_freq()
         # Do some statistics
         # Prof EJ required to get the numbers
         print(len(self.op_freq))
         print(len(self.op_freq[0]))
         print(len(self.op_freq[0][0]))
-        print(len(OPCODES))
+        print(len(self.opcodes))
         for tr_index in range(2):
             print(f"avg of {'Ponzi' if tr_index == 0 else 'Non-Ponzi'}")
-            # nums = [[] for i in range(50)] # 50 == len(original OPCODE)
-            nums = [[] for i in range(len(OPCODES))]  # 50 == len(original OPCODE)
+            nums = [[] for i in range(len(self.opcodes))] # 50 == len(original OPCODE)
             for contract in self.op_freq[tr_index]:
-                for i in range(len(OPCODES)):
-
-                    print('current i: ', i, ' len opcodes: ', len(OPCODES))
-
+                for i in range(len(self.opcodes)):
                     nums[i].append(float(contract[i]))
-            for i in range(len(OPCODES)):
-                print(f'{OPCODES[i]}: {sum(nums[i]) / len(nums[i])}')
+            for i in range(len(self.opcodes)):
+                print(f'{self.opcodes[i]}: {sum(nums[i]) / len(nums[i])}')
         # End doing some statistics
         self.cur_time = tl.compute_time(self.cur_time)
 
@@ -144,11 +183,6 @@ class Feature:
         # with open(self.paths['db'] + 'op_freq.json', 'rb') as f:
         with open(self.paths['db'] + 'op_freq_list.json', 'rb') as f:
             op_freq_dict = json.loads(f.read())
-
-            print('op freq dict type: ', type(op_freq_dict))
-            print('op freq dict 0: ', op_freq_dict[0])
-            print('op freq dict 1: ', op_freq_dict[1])
-
         self.op_freq = [[], []]
         for np_index in range(2):
             for addr in self.op[np_index]:
@@ -185,33 +219,26 @@ class Feature:
             print(f'contract_addr={contract_addr}')
             data = []
 
-            # if np_index == 0:
-            #     print('self tr_dico 0: ')
-            #     print(self.tr_dico[0])
-
-            # print('self revert: ', self.revert[contract_addr])
-            # print('\n')
-
-            if not self.revert[contract_addr]:
-                try:
-                    file_index = 0
-                    while True:
-                        print(f'Try load {contract_addr}_{file_index}.json')
-                        with open(f'{path}{contract_addr}_{file_index}.json') as f:
-                            data += json.loads(f.read())
-                        file_index += 1
-                except FileNotFoundError as e:
-                    print('Error:')
-                    print(e)
-                # except Exception as e:
-                #     print('Error:')
-                #     print(e)
+        # if not self.revert[contract_addr]:
+            try:
+                file_index = 0
+                while True:
+                    print(f'Try load {contract_addr}_{file_index}.json')
+                    with open(f'{path}{contract_addr}_{file_index}.json') as f:
+                        data += json.loads(f.read())
+                    file_index += 1
+            except FileNotFoundError as e:
+                print('Error:')
+                print(e)
+            # except Exception as e:
+            #     print('Error:')
+            #     print(e)
             self.tr_dico[np_index][i][nml_index] = data
             print(f'data_len={len(data)}, tr_dico[{np_index}][{nml_index}] = data')
 
     def compute_feature(self):
         print("features computation...")
-        self.ft_names = [# 'addr',
+        self.ft_names = [#'addr',
                          'ponzi', 'nbr_tx_in', 'nbr_tx_out', 'Tot_in', 'Tot_out',
                          'num_paid_in_addr', 'num_paid_out_addr', 'overlap_in_out_addr',
                          'mean_in', 'mean_out', 'sdev_in', 'sdev_out', 'gini_in', 'gini_out', 'avg_time_btw_tx',
@@ -311,6 +338,11 @@ class Feature:
         columns = [s + '@NUMERIC' for s in ft_names]
         columns[0] = "ponzi@{ponzi,non_ponzi}"
         df = pd.DataFrame(data=ft, columns=columns)
+
+        print('df: ', df)
+        print('columns: ', columns)
+        print('self size info: ', self.size_info)
+
         df['size_info@NUMERIC'] = self.size_info
         # data.loc[:, data.columns != columns[0]] = data.loc[:, data.columns != columns[0]].astype(np.float64)
         self.cur_time = tl.compute_time(self.cur_time)
@@ -337,11 +369,11 @@ class Feature:
 
     def dump_arff(self):
         print("Dumping into arff files ...")
-        with open(self.paths['db'] + 'models/PONZI_' + str(self.J) + '.arff', 'w') as f:
+        with open(self.paths['db'] + 'models_Yifan/PONZI_' + str(self.J) + '.arff', 'w') as f:
             a2p.dump(self.df, f)
-        with open(self.paths['db'] + 'models/PONZI_opcodes_' + str(self.J) + '.arff', 'w') as f:
+        with open(self.paths['db'] + 'models_Yifan/PONZI_opcodes_' + str(self.J) + '.arff', 'w') as f:
             a2p.dump(self.df_opcodes, f)
-        with open(self.paths['db'] + 'models/PONZI_basic_' + str(self.J) + '.arff', 'w') as f:
+        with open(self.paths['db'] + 'models_Yifan/PONZI_basic_' + str(self.J) + '.arff', 'w') as f:
             a2p.dump(self.df_basic, f)
         self.cur_time = tl.compute_time(self.cur_time)
 

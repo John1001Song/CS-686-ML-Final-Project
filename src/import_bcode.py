@@ -23,8 +23,7 @@ import csv
 import pandas as pd
 
 #sm_file = 'Smart_Contract_Addresses.list'
-sm_file = 'sm_add_nponzi.csv'
-# path = '/Users/charles/charles/university/Master Project/go-ethereum/analysis_tool_python/SmartPonziDetection/'
+# sm_file = 'sm_add_nponzi.csv'
 path = '../dataset/'
 # database_bcode = path + 'dataset/'
 database_bcode = '../dataset/'
@@ -46,42 +45,47 @@ with open(database_bcode + 'non_ponzi_collection.csv') as f:
 
 # addresses = [line[0].split('(')[0].strip() for line in csv_file if line[0] != 'addr']
 
-ponzi_df = pd.read_csv('../dataset/ponzi_collection.csv')
-addresses = ponzi_df['Address'].tolist()
+# ponzi_df = pd.read_csv('../dataset/ponzi_collection.csv')
+# ponzi_df = pd.read_csv('../dataset/2019_Apr_9_ponzi_supplement.csv')
+non_ponzi_df = pd.read_csv('../dataset/non_ponzi_collection.csv')
+addresses = non_ponzi_df['addr'].tolist()
 
 i = 0
+un_downloaded_address_list = []
 for ad in addresses:
-    # code = repr(web3.eth.getCode(web3.toChecksumAddress(ad)))[12:-2]
-    # print(ad + ', progress: ' + str(round(i / len(addresses) * 100, 2)) + '%')
-    # while True:
-    #     try:
-    #         if code:
-    #             print('code: ', code)
-    #             i += 1
-    #             with open(database_bcode + 'non_ponzi_bcode/' + ad + '.json', 'w') as f:
+    while True:
+        try:
+            if '(' in ad:
+                ad = ad.split('(')[0].strip()
+
+            print('ad: ', ad)
+            print('to checksum address: ', web3.toChecksumAddress(ad))
+            print('web3 eth get code: ', repr(web3.eth.getCode(web3.toChecksumAddress(ad))))
+
+
+            code = repr(web3.eth.getCode(web3.toChecksumAddress(ad)))[12:-2]
+
+            print('code: ', code)
+
+            print(ad + ', progress: ' + str(round(i / len(addresses) * 100, 2)) + '%')
+
+            if code:
+                i += 1
+                with open(database_bcode + 'non_ponzi_bcode/' + ad + '.json', 'w') as f:
                 #     print('writing...')
-                # with open(database_bcode + 'ponzi_bcode/' + ad + '.json', 'w') as f:
-                #     f.write(code)
-                # f.close()
+                # with open(database_bcode + 'ponzi_new_bcode/' + ad + '.json', 'w') as f:
+                    f.write(code)
+                f.close()
                 # print('file closed')
-            # else:
-            #     print('code == false', code, ad)
-            # break
-        # except Exception as e:
-        #     print('Error: ')
-        #     print(e)
-    #Disasemble
-    print(ad)
-    # os.system('cat /Users/e31989/Documents/sm_database/bytecode/' + ad +'.json | evmdis > /Users/e31989/Documents/features/' + ad + '.json' )
-    # print('evmdis disasembling...')
-    i += 1
-    try:
-        os.system(
-    #         'cat /Users/Jinyue/Documents/ML-jsong32/final_project/dataset/non_ponzi_bcode/' + ad + '.json | evmdis > /Users/Jinyue/Documents/ML-jsong32/final_project/dataset/non_ponzi_features/' + ad + '.json')
-        'cat ../ponzi_bcode/' + ad + '.json | evmdis > ../ponzi_features/' + ad + '.json')
-    # print('evmdis work done\n')
-    except Exception as e:
-        print('Error: ')
-        print(e)
-# for /r %i in (*.json); do cat "%i" | evmdis > "/Users/e31989/Documents/features/$~ni.json"; done
-# for %i in (*.json); do cat "%i" | evmdis > "/Users/e31989/Documents/features/$~ni.json"; done
+            else:
+                print('code == false', code, ad)
+                un_downloaded_address_list.append(ad)
+            break
+        except Exception as e:
+            print('Error: ')
+            print(e)
+            un_downloaded_address_list.append(ad)
+            break
+
+print('un downloaded address: ', un_downloaded_address_list)
+print('un downloaded size: ', len(un_downloaded_address_list))
