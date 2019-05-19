@@ -1,5 +1,10 @@
 import pandas as pd
 import os
+import json
+import numpy as np
+from ast import literal_eval
+from scipy import stats
+
 
 OPCODES = ['STOP', 'ADD', 'MUL', 'SUB', 'DIV', 'SDIV', 'MOD', 'SMOD', 'ADDMOD', 'MULMOD', 'EXP', 'SIGNEXTEND',
 
@@ -77,6 +82,9 @@ class PreprocessData:
         self.opcodes = OPCODES
         self.opcodes_without_revert = OPCODES_without_REVERT
         self.paths = dict()
+        # self.op_equal_size = [[], []] # 0: ponzi, 1:non_ponzi
+        self.op_equal_size = [] # [{'address':0x123asd, 'sequence':[1,2,3,...,0], 'label':0}, {}, ..., {}]
+        self.longest_op_list = 0
 
     def define_path(self):
         self.paths['db'] = '../dataset/'
@@ -91,11 +99,16 @@ class PreprocessData:
         self.paths['ponzi_op_int_wo_revert'] = self.paths['db'] + 'ponzi_official_opcode_int_wo_revert/'
         self.paths['non_ponzi_op_int_wo_revert'] = self.paths['db'] + 'non_ponzi_official_opcode_int_wo_revert/'
 
+        # output paths for equal size
+        self.paths['op_int_equal_dataframe'] = self.paths['db'] + 'op_int_equal_dataframe/'
+
     def start(self):
         self.define_path()
         # self.check_all_opcodes()
         # self.get_opcode_int()
         self.get_opcode_int_without_revert()
+        self.add_0_when_no_data()
+        # self.load_all_op_int()
 
     def check_all_opcodes(self):
         '''Go through all json files and check un-doc opcodes'''
@@ -117,6 +130,7 @@ class PreprocessData:
                         if not line:
                             break
                         if line.__contains__('(Unknown Opcode)'):
+                            # '29'(Unknown Opcode)
                             unknown_op = line[1:3]
                             if not unknown_op in self.opcodes:
                                 extra_opcode.add(unknown_op)
@@ -154,7 +168,6 @@ class PreprocessData:
                 if not line:
                     break
                 if line.__contains__('(Unknown Opcode)'):
-                    # print('!!!!!!!!!', line)
                     op_list.append(line[1:3])
                     # print(line[1:3])
                 elif line.__contains__('REVERT'):
@@ -167,7 +180,7 @@ class PreprocessData:
         # print(len(op_int_list))
         op_int_list = []
         for op in op_list:
-            op_int_list.append(self.opcodes.index(op))
+            op_int_list.append(self.opcodes_without_revert.index(op)+1)
 
         with open(output_path+hex_addr.split('.json')[0]+'.txt', 'w') as f_op_int:
             for item in op_int_list:
@@ -207,12 +220,115 @@ class PreprocessData:
         # print(len(op_int_list))
         op_int_list = []
         for op in op_list:
-            op_int_list.append(self.opcodes.index(op))
+            op_int_list.append(self.opcodes.index(op) + 1)
 
         with open(output_path+hex_addr.split('.json')[0]+'.txt', 'w') as f_op_int:
             for item in op_int_list:
                 f_op_int.write("%s\n" % item)
 
+    def load_one_opcode_int(self, data_path, hex_addr):
+        op_list = []
+        with open(data_path + hex_addr) as f_opcode:
+            while True:
+                line = f_opcode.readline()
+                if not line:
+                    break
+                else:
+                    op_list.append(int(line.split('\n')[0]))
+        f_opcode.close()
+        return op_list, len(op_list)
+
+    def add_0_when_no_data(self):
+        '''
+        This func makes all contracts have a same length in their op lists
+        For example:
+        [1, 2, 3, 4, 0, 0, 0]
+        [4, 3, 2, 1, 1, 1, 1]
+        ...
+        '''
+        # input
+        opcode_int_paths = [self.paths['ponzi_op_int_wo_revert'], self.paths['non_ponzi_op_int_wo_revert']]
+
+        # load all ponzi and non ponzi into lists
+        for i in range(2):
+            for filename in os.listdir(opcode_int_paths[i]):
+                if not filename.endswith('.txt'):
+                    continue
+                # print(filename)
+                cur_op_list, cur_op_list_size = self.load_one_opcode_int(opcode_int_paths[i], filename)
+                # print(cur_op_list)
+                # print(cur_op_list_size)
+                self.op_equal_size.append({'address': filename.split('.txt')[0], 'sequence': cur_op_list, 'label': i})
+                if cur_op_list_size > self.longest_op_list:
+                    self.longest_op_list = cur_op_list_size
+
+        # make all lists have the same length
+        for op_list_set in self.op_equal_size:
+            cur_length = len(op_list_set['sequence'])
+            op_list_set['sequence'] += [0] * (self.longest_op_list - cur_length)
+            # op_list_set['sequence'] = np.asarray(op_list_set['sequence'])
+
+        # build a dataframe
+        df = pd.DataFrame(self.op_equal_size)
+        # df.to_numpy()
+        # print(df.iloc[0, :])
+        # print(df.iloc[6716, :])
+
+        # for index, row in df.iterrows():
+        #     temp_list = []
+        #     for op_int in row['sequence']:
+        #         temp_list.append(int(op_int))
+        #     row['sequence'] = temp_list
+
+        # dump the dataframe
+        columns = ['address', 'label']
+        for i in range(self.longest_op_list):
+            columns.append(f'op_seq_{i}')
+        with open(self.paths['op_int_equal_dataframe'] + 'op_int_equal_new.csv', 'w') as f_out:
+            f_out.write('address')
+            columns.remove('address')
+            for c_name in columns:
+                f_out.write(',' + c_name)
+            f_out.write('\n')
+            f_out.close()
+        with open(self.paths['op_int_equal_dataframe'] + 'op_int_equal_new.csv', 'a') as f_out:
+            for index, row in df.iterrows():
+                f_out.write(row['address'] + ',' + str(row['label']))
+                for op_int in row['sequence']:
+                    f_out.write(',' + str(op_int))
+                f_out.write('\n')
+
+
+        # df.to_csv(self.paths['op_int_equal_dataframe']+'op_int_equal_pd.csv', index=False)
+        # use json dump, then use json load; otherwise, df cannot read it
+        # with open(self.paths['op_int_equal_dataframe']+'op_int_equal.csv', 'w') as f_out:
+        #     json.dump(self.op_equal_size, f_out)
+
+    def load_all_op_int(self):
+        # input
+        opcode_int_paths = [self.paths['ponzi_op_int_wo_revert'], self.paths['non_ponzi_op_int_wo_revert']]
+
+        sizes = []
+
+        # load all ponzi and non ponzi into lists
+        for i in range(2):
+            for filename in os.listdir(opcode_int_paths[i]):
+                if not filename.endswith('.txt'):
+                    continue
+                # print(filename)
+                cur_op_list, cur_op_list_size = self.load_one_opcode_int(opcode_int_paths[i], filename)
+                # print(cur_op_list)
+                # print(cur_op_list_size)
+                self.op_equal_size.append({'address': filename.split('.txt')[0], 'sequence': cur_op_list, 'label': i})
+                sizes.append(cur_op_list_size)
+                if cur_op_list_size > self.longest_op_list:
+                    self.longest_op_list = cur_op_list_size
+
+        print('mean of all sizes: ', np.mean(sizes))
+        print('median of all sizes: ', np.median(sizes))
+        print('mode of all sizes: ', stats.mode(sizes))
+        print('min of all sizes: ', min(sizes))
+        print('max of all sizes: ', max(sizes))
 
 if __name__ == '__main__':
     pp = PreprocessData()

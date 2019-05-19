@@ -1,45 +1,30 @@
-import os
-import ast
-import json
-import csv
-from web3 import Web3
 import pandas as pd
-import pprint
-import urllib3
-
-# import urllib.request, json
-#
-# with urllib.request.urlopen("https://etherscan.io/api?module=opcode&action=getopcode&address=0x0b230b071008bbb145b5bff27db01c9248f486b9") as url:
-#     data = json.loads(url.read().decode())
-#     print(data)
-
-http = urllib3.PoolManager()
-
-heroes = http.request('GET', 'https://etherscan.io/api?module=opcode&action=getopcode&address=0x0b230b071008bbb145b5bff27db01c9248f486b9')
-
-print(heroes.data.decode('UTF-8'))
-
-heroes_dict = json.loads(heroes.data.decode('UTF-8'))
-print(heroes_dict)
-
-print(heroes_dict['result'])
-
-op_code = heroes_dict['result'].split('<br>')
-
-print(op_code)
-
-str_list = list(filter(None, op_code)) # fastest
-
-print(str_list)
-
-OPCODES = ['SWAP8', 'DUP11', 'DUP14', 'SWAP10', 'DUP15', 'LOG2', 'INVALID', 'SWAP9', 'SWAP5', 'SWAP12', 'SWAP16',
-           'DUP9', 'LOG1', 'DUP12', 'SWAP11', 'SWAP2', 'MSTORE8', 'SWAP14', 'DUP13', 'POP', 'DUP8','DUP7',
-           'DUP3', 'DUP4', 'MSTORE', 'SWAP3', 'CODECOPY', 'JUMP', 'DUP5', 'SWAP13', 'STOP', 'CALLDATACOPY', 'SWAP7',
-           'SWAP1', 'SWAP6', 'RETURN', 'DUP6', 'SWAP4', 'REVERT', 'SELFDESTRUCT', 'DUP10', 'DUP16', 'JUMPI',
-           'SSTORE', 'PUSH', 'LOG3', 'LOG4', 'Missing', 'SWAP15', 'DUP1&2']
+import torch
+import numpy as np
 
 
-OPCODES_2 = ['STOP', 'ADD', 'MUL', 'SUB', 'DIV', 'SDIV', 'MOD', 'SMOD', 'ADDMOD', 'MULMOD', 'EXP', 'SIGNEXTEND',
+# df = pd.read_csv('../dataset/op_int_equal_dataframe/op_int_equal.csv')
+# df = pd.read_csv('../dataset/op_int_equal_dataframe/op_int_equal_pd.csv')
+# print(df.head())
+# print(df.columns)
+# df = pd.read_csv('../dataset/op_int_equal_dataframe/op_int_equal_new.csv')
+# print(df.iloc[100, :])
+# print(len(df.iloc[100, :]))
+# print(len(df.iloc[10, :]))
+# print(len(df.iloc[6000, :]))
+# print(type(df.iloc[100, :]))
+# for index, row in df.iterrows():
+#     temp_list = []
+#     row['sequence'] = row['sequence'][1:-1]
+#     for op_int in row['sequence']:
+#         if op_int == ',' or ' ':
+#             continue
+#         temp_list.append(int(op_int))
+#     row['sequence'] = temp_list
+
+# dictionary of lists
+
+OPCODES = ['STOP', 'ADD', 'MUL', 'SUB', 'DIV', 'SDIV', 'MOD', 'SMOD', 'ADDMOD', 'MULMOD', 'EXP', 'SIGNEXTEND',
 
              'SUICIDE', 'DELEGATE_CALL', 'CREATE2',
 
@@ -62,17 +47,15 @@ OPCODES_2 = ['STOP', 'ADD', 'MUL', 'SUB', 'DIV', 'SDIV', 'MOD', 'SMOD', 'ADDMOD'
 
              'PUSH', 'DUP', 'SWAP',
 
-             'CREATE', 'CALL', 'CALLCODE', 'RETURN', 'DELEGATECALL', 'STATICCALL', 'REVERT', 'SELFDESTRUCT']
+             'CREATE', 'CALL', 'CALLCODE', 'RETURN', 'DELEGATECALL', 'STATICCALL', 'REVERT', 'SELFDESTRUCT',
 
+            '29', '0d', 'ec', 'd9', 'a9', '46', 'b3', '2a', 'd2', 'c9', '22', '21', '1c', 'ea', 'c7', 'ee', 'd5', 'e5',
+            'ad', 'ac', '25', 'ca', 'be', 'e8', 'aa', 'b1', '1e', '49', 'e6', 'eb', 'a7', 'cf', '2e', '0c', '5d', 'ef',
+            'c8', '24', 'fe', 'e3', '4d', '2d', '3f', 'c0', 'd1', '23', 'b6', 'd7', 'cd', 'e1', 'e4', 'd6', 'af', 'f8',
+            'e0', 'e9', 'da', 'b2', '4e', '1d', 'cb', 'dc', 'df', 'c6', 'fb', 'b9', 'f9', 'd4', '28', 'b4', 'c5', 'f7',
+            '3e', 'a8', 'a6', '2f', 'b7', '47', 'fc', 'bf', '5c', '2c', '1b', '3d', 'c4', 'ce', '4b', 'bb', 'd8', 'bc',
+            '4c', 'f6', 'bd', 'db', '2b', '26', '48', '4f', 'c3', 'de', 'd3', 'e2', '4a', 'ab', 'd0', 'b5', 'dd', '0f',
+            '5e', 'c1', 'ed', '27', 'a5', 'b8', 'c2', 'e7', '0e', '5f', 'b0', 'ae', '1f', 'ba'
+            ]
 
-
-op_to_int = []
-
-for op in str_list:
-    if op not in OPCODES:
-        op_to_int.append(-1)
-        print('un_doc op: ', op)
-    else:
-        op_to_int.append(OPCODES.index(op))
-
-print(op_to_int)
+print(len(OPCODES))
